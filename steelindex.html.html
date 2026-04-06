@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>World Steel Production 2025</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#ffffff;color:#1a2b3c;min-height:100vh;padding:20px}
+  #wrap{max-width:1200px;margin:0 auto}
+  #header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+  #header h1{font-size:20px;font-weight:600;color:#1a2b3c;letter-spacing:-0.3px}
+  #header p{font-size:12px;color:#4a7a99;margin-top:3px}
+  #header .src{font-size:11px;color:#7a9ab0;text-align:right}
+  #total-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .tc{background:#f0f6fb;border:1px solid #c8dde9;border-radius:10px;padding:10px 16px;flex:1;min-width:130px}
+  .tc .tl{font-size:11px;color:#4a7a99;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.5px}
+  .tc .tv{font-size:22px;font-weight:600;color:#1a2b3c}
+  .tc .ts{font-size:11px;color:#7a9ab0;margin-top:2px}
+  #map-wrap{position:relative;width:100%;background:#f7fbff;border:1px solid #c8dde9;border-radius:14px;overflow:visible}
+  svg#map{width:100%;height:auto;display:block}
+  .ocean{fill:#d6eaf8}
+  .land{fill:#b0c8d8;stroke:#ffffff;stroke-width:0.6}
+  .graticule{fill:none;stroke:rgba(0,0,0,0.07);stroke-width:0.4}
+  .bubble{fill:#0077B6;fill-opacity:0.5;stroke:#005f8e;stroke-width:0.8;cursor:pointer;transition:fill-opacity 0.15s}
+  .bubble:hover{fill:#0096c7;fill-opacity:0.8}
+  .bubble.active{fill:#00B4D8;fill-opacity:1;stroke:#0077B6;stroke-width:1.5}
+  #tooltip{position:absolute;pointer-events:none;background:#ffffff;border:1px solid #a8cfe0;border-radius:12px;padding:14px 16px;font-size:13px;min-width:200px;display:none;z-index:20;box-shadow:0 4px 16px rgba(0,0,0,0.1)}
+  #tooltip .tt-name{font-weight:600;font-size:15px;margin-bottom:9px;color:#0077B6;border-bottom:1px solid #c8dde9;padding-bottom:8px}
+  #tooltip .tt-row{display:flex;justify-content:space-between;gap:24px;margin:5px 0}
+  #tooltip .tt-lbl{color:#4a7a99;font-size:12px}
+  #tooltip .tt-val{font-weight:600;font-size:12px;color:#1a2b3c}
+  #hint{font-size:11px;color:#7a9ab0;text-align:center;margin-top:10px}
+  #legend{display:flex;align-items:center;gap:20px;margin-top:10px;flex-wrap:wrap;justify-content:center}
+  #legend span{font-size:11px;color:#4a7a99;display:flex;align-items:center;gap:5px}
+  .close-btn{position:absolute;top:8px;right:10px;background:#e8f4fb;border:none;color:#0077B6;cursor:pointer;font-size:14px;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;pointer-events:all}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="header">
+    <div>
+      <h1>World Crude Steel Production — 2025</h1>
+      <p>Click any bubble to view country details</p>
+    </div>
+    <div class="src">Source: World Steel Association (worldsteel)<br>2025 Annual Production Totals</div>
+  </div>
+  <div id="total-bar">
+    <div class="tc"><div class="tl">World total</div><div class="tv">1,849 Mt</div><div class="ts">2025 annual</div></div>
+    <div class="tc"><div class="tl">China share</div><div class="tv">52%</div><div class="ts">960,810 kt</div></div>
+    <div class="tc"><div class="tl">Top 10 countries</div><div class="tv">~83%</div><div class="ts">of world total</div></div>
+    <div class="tc"><div class="tl">Countries tracked</div><div class="tv">70</div><div class="ts">≈98% of world production</div></div>
+  </div>
+  <div id="map-wrap">
+    <svg id="map" viewBox="0 0 960 500"></svg>
+    <div id="tooltip">
+      <button class="close-btn" id="close-tt">✕</button>
+      <div class="tt-name" id="tt-name"></div>
+      <div class="tt-row"><span class="tt-lbl">Production 2025</span><span class="tt-val" id="tt-prod"></span></div>
+      <div class="tt-row"><span class="tt-lbl">World share</span><span class="tt-val" id="tt-share"></span></div>
+      <div class="tt-row"><span class="tt-lbl">Change vs 2024</span><span class="tt-val" id="tt-chg"></span></div>
+      <div class="tt-row"><span class="tt-lbl">Global rank</span><span class="tt-val" id="tt-rank"></span></div>
+    </div>
+  </div>
+  <div id="hint">Bubble size proportional to production volume · Data: worldsteel.org</div>
+  <div id="legend">
+    <span><svg width="12" height="12"><circle cx="6" cy="6" r="6" fill="#00B4D8" fill-opacity="0.55"/></svg> Bubble = country production volume</span>
+    <span><svg width="12" height="12"><circle cx="6" cy="6" r="6" fill="#90E0EF"/></svg> Selected country</span>
+  </div>
+</div>
+
+<script>
+const WORLD_TOTAL = 1849373;
+const DATA = [
+  {name:"China",kt:960810,chg:-3.4,rank:1,lon:104.0,lat:35.0},
+  {name:"India",kt:164894,chg:6.0,rank:2,lon:79.0,lat:22.0},
+  {name:"United States",kt:81937,chg:-0.5,rank:4,lon:-98.5,lat:39.5},
+  {name:"Japan",kt:80671,chg:-4.5,rank:3,lon:138.0,lat:36.0},
+  {name:"Russia",kt:67901,chg:-4.9,rank:5,lon:60.0,lat:57.0},
+  {name:"South Korea",kt:62233,chg:-4.4,rank:6,lon:127.5,lat:36.5},
+  {name:"Türkiye",kt:38118,chg:5.2,rank:7,lon:35.0,lat:39.0},
+  {name:"Germany",kt:35200,chg:-5.0,rank:8,lon:10.4,lat:51.2},
+  {name:"Brazil",kt:33800,chg:1.2,rank:9,lon:-51.9,lat:-14.2},
+  {name:"Iran",kt:33500,chg:3.0,rank:10,lon:53.7,lat:32.4},
+  {name:"Italy",kt:21000,chg:-2.0,rank:11,lon:12.6,lat:42.5},
+  {name:"Viet Nam",kt:19100,chg:2.0,rank:12,lon:106.0,lat:16.0},
+  {name:"Taiwan",kt:18900,chg:-2.5,rank:13,lon:121.0,lat:23.7},
+  {name:"Indonesia",kt:16600,chg:3.0,rank:14,lon:113.9,lat:-0.8},
+  {name:"Mexico",kt:16200,chg:-1.5,rank:15,lon:-102.5,lat:23.6},
+  {name:"Canada",kt:12200,chg:-1.0,rank:16,lon:-96.8,lat:56.1},
+  {name:"Spain",kt:11400,chg:-2.0,rank:17,lon:-3.7,lat:40.2},
+  {name:"Egypt",kt:10400,chg:2.5,rank:18,lon:30.8,lat:26.8},
+  {name:"France",kt:10000,chg:-3.0,rank:19,lon:2.3,lat:46.2},
+  {name:"Saudi Arabia",kt:9900,chg:1.0,rank:20,lon:45.1,lat:23.9},
+  {name:"Malaysia",kt:7500,chg:2.0,rank:21,lon:109.7,lat:4.2},
+  {name:"Austria",kt:7100,chg:-2.0,rank:22,lon:14.6,lat:47.5},
+  {name:"Poland",kt:7100,chg:-1.0,rank:23,lon:19.1,lat:51.9},
+  {name:"Ukraine",kt:6200,chg:-5.0,rank:24,lon:31.2,lat:49.0},
+  {name:"United Kingdom",kt:5800,chg:-3.0,rank:25,lon:-3.4,lat:54.4},
+  {name:"Argentina",kt:5400,chg:3.0,rank:26,lon:-63.6,lat:-38.4},
+  {name:"Pakistan",kt:5000,chg:4.0,rank:27,lon:69.3,lat:30.4},
+  {name:"South Africa",kt:4900,chg:-1.0,rank:28,lon:25.1,lat:-29.0},
+  {name:"UAE",kt:4800,chg:5.0,rank:29,lon:53.8,lat:23.4},
+  {name:"Czech Republic",kt:4200,chg:-3.0,rank:30,lon:15.5,lat:49.8},
+  {name:"Netherlands",kt:3800,chg:-4.0,rank:31,lon:5.3,lat:52.1},
+  {name:"Thailand",kt:3600,chg:2.0,rank:32,lon:100.9,lat:15.9},
+  {name:"Romania",kt:3500,chg:-2.0,rank:33,lon:25.0,lat:46.0},
+  {name:"Kazakhstan",kt:3700,chg:2.0,rank:35,lon:66.9,lat:48.0},
+  {name:"Algeria",kt:3300,chg:3.0,rank:36,lon:2.6,lat:28.0},
+  {name:"Sweden",kt:3200,chg:-3.0,rank:34,lon:18.6,lat:60.1},
+  {name:"Iraq",kt:2800,chg:5.0,rank:37,lon:44.0,lat:33.2},
+  {name:"Qatar",kt:2600,chg:1.0,rank:38,lon:51.2,lat:25.3},
+  {name:"Belgium",kt:2500,chg:-3.0,rank:39,lon:4.5,lat:50.5},
+  {name:"Chile",kt:1200,chg:2.0,rank:40,lon:-71.5,lat:-35.7},
+];
+
+const svg = d3.select("#map");
+const W=960, H=500;
+const proj = d3.geoNaturalEarth1().scale(153).translate([W/2,H/2]);
+const path = d3.geoPath().projection(proj);
+const maxKt = d3.max(DATA,d=>d.kt);
+const rScale = d3.scaleSqrt().domain([0,maxKt]).range([0,56]);
+
+svg.append("rect").attr("width",W).attr("height",H).attr("class","ocean");
+
+fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
+  .then(r=>r.json())
+  .then(world=>{
+    const countries = topojson.feature(world,world.objects.countries);
+    svg.append("path").datum(d3.geoGraticule()()).attr("class","graticule").attr("d",path);
+    svg.append("g").selectAll("path").data(countries.features).join("path").attr("class","land").attr("d",path);
+
+    const tt = document.getElementById("tooltip");
+    const mapWrap = document.getElementById("map-wrap");
+    let activeBubble = null;
+
+    DATA.sort((a,b)=>b.kt-a.kt);
+
+    DATA.forEach(d=>{
+      const p = proj([d.lon,d.lat]);
+      if(!p) return;
+      const [px,py]=p;
+      const r = Math.max(rScale(d.kt),3.5);
+
+      const circ = svg.append("circle")
+        .attr("class","bubble")
+        .attr("cx",px).attr("cy",py).attr("r",r);
+
+      circ.on("click",function(event){
+        event.stopPropagation();
+        if(activeBubble) activeBubble.classed("active",false);
+        circ.classed("active",true);
+        activeBubble=circ;
+
+        const svgEl=document.getElementById("map");
+        const sr=svgEl.getBoundingClientRect();
+        const sx=sr.width/W, sy=sr.height/H;
+        let tx=px*sx+r*sx+10, ty=py*sy-20;
+        if(tx+210>sr.width) tx=px*sx-r*sx-220;
+        if(tx<0) tx=4;
+        if(ty<0) ty=py*sy+r*sy+8;
+        if(ty+145>sr.height) ty=sr.height-149;
+
+        tt.style.left=tx+"px"; tt.style.top=ty+"px"; tt.style.display="block";
+        document.getElementById("tt-name").textContent=d.name;
+        document.getElementById("tt-prod").textContent=d.kt.toLocaleString()+" kt ("+( d.kt/1000).toFixed(1)+" Mt)";
+        document.getElementById("tt-share").textContent=((d.kt/WORLD_TOTAL)*100).toFixed(1)+"% of world";
+        const ce=document.getElementById("tt-chg");
+        ce.textContent=(d.chg>=0?"+":"")+d.chg.toFixed(1)+"% vs 2024";
+        ce.style.color=d.chg>=0?"#06D6A0":"#EF233C";
+        document.getElementById("tt-rank").textContent="#"+d.rank+" globally";
+      });
+    });
+
+    document.getElementById("map").addEventListener("click",()=>{
+      tt.style.display="none";
+      if(activeBubble){activeBubble.classed("active",false);activeBubble=null;}
+    });
+    document.getElementById("close-tt").addEventListener("click",(e)=>{
+      e.stopPropagation();
+      tt.style.display="none";
+      if(activeBubble){activeBubble.classed("active",false);activeBubble=null;}
+    });
+  });
+</script>
+</body>
+</html>
