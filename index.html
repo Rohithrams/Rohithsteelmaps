@@ -2,539 +2,389 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
 <title>World Steel — Decarbonisation Dashboard 2025</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #1a202c; }
-
-header {
-  background: #1a3a5c;
-  border-bottom: 3px solid #2ecc71;
-  padding: 14px 24px;
-}
-header h1 { font-size: 1.2rem; font-weight: 700; color: #fff; }
-header p  { font-size: 0.71rem; color: #a0b8cc; margin-top: 3px; }
-
-.tabs { display: flex; gap: 6px; padding: 12px 24px 0; background: #f0f4f8; }
-.tab {
-  padding: 8px 18px; border-radius: 8px 8px 0 0; font-size: 0.78rem; font-weight: 600;
-  cursor: pointer; border: 1px solid #cbd5e0; border-bottom: none;
-  background: #e2e8f0; color: #4a5568; transition: all .2s;
-}
-.tab.active { background: #fff; color: #1a3a5c; border-color: #2ecc71; }
-
-.panel { display: none; padding: 14px 24px 24px; background: #f0f4f8; }
-.panel.active { display: block; }
-
-.stats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-.stat {
-  background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
-  padding: 10px 16px; flex: 1; min-width: 120px;
-  box-shadow: 0 1px 4px rgba(0,0,0,.07);
-}
-.stat .val { font-size: 1.3rem; font-weight: 700; color: #1a3a5c; }
-.stat .lbl { font-size: 0.63rem; color: #718096; margin-top: 2px; }
-
-.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
-.controls span { font-size: 0.75rem; color: #4a5568; font-weight: 600; }
-.mode-btn {
-  padding: 6px 14px; border-radius: 20px; font-size: 0.74rem; font-weight: 600;
-  cursor: pointer; border: 2px solid #cbd5e0; background: #fff; color: #4a5568; transition: all .2s;
-}
-.mode-btn.active { background: #1a3a5c; color: #fff; border-color: #1a3a5c; }
-
-.legend {
-  display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px;
-  background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
-  padding: 8px 14px; box-shadow: 0 1px 4px rgba(0,0,0,.06);
-}
-.legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: #2d3748; }
-.swatch { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
-
-/* MAP — rectangular, full width */
-#mapwrap {
-  width: 100%;
-  background: #cce5f5;
-  border-radius: 10px;
-  border: 1px solid #b0cfe8;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0,0,0,.1);
-}
-#mapsvg { display: block; width: 100%; }
-
-/* country fills set by D3 */
-.land { fill: #d1dce8; stroke: #ffffff; stroke-width: 0.6; }
-.graticule { fill: none; stroke: #b8d4e8; stroke-width: 0.3; }
-
-/* TOOLTIP */
-.tooltip {
-  position: absolute; pointer-events: none; z-index: 999;
-  background: #fff; border: 2px solid #2ecc71; border-radius: 10px;
-  padding: 12px 16px; min-width: 240px; font-size: 0.74rem; line-height: 1.7;
-  box-shadow: 0 6px 24px rgba(0,0,0,.18); display: none;
-}
-.tooltip strong { color: #1a3a5c; font-size: 0.88rem; display: block; margin-bottom: 5px; }
-.tt-row { display: flex; justify-content: space-between; gap: 12px; }
-.tt-row span:last-child { color: #1a3a5c; font-weight: 700; }
-.tip-note { margin-top: 6px; font-size: 0.67rem; color: #718096; border-top: 1px solid #e2e8f0; padding-top: 5px; }
-.tag { display:inline-block; margin-top:4px; padding:2px 8px; border-radius:12px; font-size:0.63rem; font-weight:700; }
-.tag.hi  { background:#fed7d7; color:#c53030; }
-.tag.mid { background:#fef3c7; color:#92400e; }
-.tag.lo  { background:#c6f6d5; color:#276749; }
-
-/* TABLES / CHARTS */
-table { width:100%; border-collapse:collapse; font-size:0.77rem; background:#fff; border-radius:10px; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.07); }
-th { background:#1a3a5c; color:#fff; font-weight:600; padding:10px 12px; text-align:left; }
-td { padding:9px 12px; border-bottom:1px solid #edf2f7; color:#2d3748; vertical-align:top; }
-tr:hover td { background:#f7fafc; }
-.badge { display:inline-block; padding:2px 9px; border-radius:12px; font-size:0.64rem; font-weight:700; }
-.badge.green { background:#c6f6d5; color:#276749; }
-.badge.blue  { background:#bee3f8; color:#2b6cb0; }
-.badge.cons  { background:#e9d8fd; color:#553c9a; }
-.badge.demo  { background:#feebc8; color:#7b341e; }
-.badge.op    { background:#c6f6d5; color:#276749; }
-
-.chart-wrap { background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:16px; margin-bottom:14px; box-shadow:0 1px 6px rgba(0,0,0,.06); }
-.chart-wrap h3 { font-size:0.8rem; color:#1a3a5c; font-weight:700; margin-bottom:12px; }
-.bar-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:0.71rem; }
-.bar-label { width:125px; text-align:right; color:#2d3748; flex-shrink:0; font-weight:500; }
-.bar-track { flex:1; height:15px; background:#edf2f7; border-radius:6px; overflow:hidden; position:relative; }
-.bar-fill  { height:100%; }
-.bar-val   { width:95px; color:#4a5568; flex-shrink:0; font-size:0.68rem; }
-
-footer { text-align:center; font-size:0.68rem; color:#718096; padding:14px; background:#f0f4f8; border-top:1px solid #e2e8f0; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c;-webkit-text-size-adjust:100%}
+header{background:#1a3a5c;border-bottom:3px solid #2ecc71;padding:12px 16px}
+header h1{font-size:clamp(.95rem,3vw,1.15rem);font-weight:700;color:#fff;line-height:1.3}
+header p{font-size:clamp(.58rem,1.8vw,.68rem);color:#a0b8cc;margin-top:3px}
+.tabs{display:flex;padding:8px 16px 0;background:#f0f4f8;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:7px 14px;border-radius:8px 8px 0 0;font-size:clamp(.65rem,2.2vw,.78rem);font-weight:600;cursor:pointer;border:1px solid #cbd5e0;border-bottom:none;background:#e2e8f0;color:#4a5568;white-space:nowrap;flex-shrink:0;transition:all .15s}
+.tab.active{background:#fff;color:#1a3a5c;border-color:#2ecc71}
+.panel{display:none;padding:12px 16px 20px;background:#f0f4f8}
+.panel.active{display:block}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:10px}
+@media(min-width:500px){.stats{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:900px){.stats{grid-template-columns:repeat(7,1fr)}}
+.stat{background:#fff;border:1px solid #e2e8f0;border-radius:9px;padding:9px 11px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.stat .val{font-size:clamp(1rem,3.5vw,1.25rem);font-weight:700;color:#1a3a5c;line-height:1.2}
+.stat .lbl{font-size:clamp(.55rem,1.6vw,.62rem);color:#718096;margin-top:2px;line-height:1.3}
+.controls{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.controls span{font-size:clamp(.65rem,2vw,.73rem);color:#4a5568;font-weight:600}
+.mbtn{padding:5px 11px;border-radius:16px;font-size:clamp(.62rem,1.9vw,.72rem);font-weight:600;cursor:pointer;border:2px solid #cbd5e0;background:#fff;color:#4a5568;transition:all .15s;white-space:nowrap}
+.mbtn.active{background:#1a3a5c;color:#fff;border-color:#1a3a5c}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:7px 10px}
+.li{display:flex;align-items:center;gap:4px;font-size:clamp(.6rem,1.8vw,.69rem);color:#2d3748}
+.sw{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+#mapwrap{position:relative;border:2px solid #b0cfe8;border-radius:10px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.1);background:#d4eaf7}
+#mapsvg{display:block;width:100%;height:auto}
+.country-path{fill:#b8ccd8;stroke:#deeaf5;stroke-width:.5}
+.graticule{fill:none;stroke:#c5dcea;stroke-width:.4}
+.sphere{fill:#d4eaf7}
+#tip{display:none;background:#fff;border:2px solid #2ecc71;border-radius:10px;padding:12px 14px;font-size:clamp(.68rem,2.2vw,.72rem);line-height:1.75;box-shadow:0 5px 20px rgba(0,0,0,.2);z-index:999;max-width:90vw}
+@media(max-width:599px){#tip{position:fixed;bottom:0;left:0;right:0;border-radius:14px 14px 0 0;border-bottom:none;padding:14px 18px 24px;max-width:100vw;max-height:55vh;overflow-y:auto}}
+@media(min-width:600px){#tip{position:absolute}}
+#tip strong{color:#1a3a5c;font-size:clamp(.8rem,2.5vw,.88rem);display:block;margin-bottom:4px}
+.trow{display:flex;justify-content:space-between;gap:10px}
+.trow span:last-child{font-weight:700;color:#1a3a5c}
+.tnote{margin-top:6px;font-size:clamp(.6rem,1.8vw,.64rem);color:#718096;border-top:1px solid #e2e8f0;padding-top:5px;line-height:1.5}
+.tag{display:inline-block;margin-top:4px;padding:2px 8px;border-radius:10px;font-size:.62rem;font-weight:700}
+.hi{background:#fed7d7;color:#c53030}.mid{background:#fef3c7;color:#92400e}.lo{background:#c6f6d5;color:#276749}
+#closebtn{position:absolute;top:10px;right:12px;background:none;border:none;font-size:1.2rem;cursor:pointer;color:#4a5568;display:none}
+@media(max-width:599px){#closebtn{display:block}}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:clamp(.65rem,2vw,.75rem);background:#fff;min-width:560px;box-shadow:0 1px 5px rgba(0,0,0,.07)}
+th{background:#1a3a5c;color:#fff;font-weight:600;padding:9px 10px;text-align:left;white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid #edf2f7;color:#2d3748;vertical-align:top}
+tr:hover td{background:#f7fafc}
+.badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:.6rem;font-weight:700;white-space:nowrap}
+.cw{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:13px;margin-bottom:11px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.cw h3{font-size:clamp(.72rem,2.2vw,.8rem);color:#1a3a5c;font-weight:700;margin-bottom:9px;line-height:1.3}
+.br{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:clamp(.64rem,1.9vw,.7rem)}
+.bl{width:clamp(90px,22vw,130px);text-align:right;color:#2d3748;flex-shrink:0;font-weight:500;font-size:clamp(.6rem,1.8vw,.68rem)}
+.bt{flex:1;height:14px;background:#edf2f7;border-radius:5px;overflow:hidden;position:relative}
+.bf{height:100%}
+.bv{width:clamp(70px,18vw,95px);color:#4a5568;flex-shrink:0;font-size:clamp(.6rem,1.7vw,.67rem)}
+footer{text-align:center;font-size:clamp(.6rem,1.8vw,.68rem);color:#718096;padding:12px;background:#f0f4f8;border-top:1px solid #e2e8f0}
 </style>
 </head>
 <body>
-
 <header>
   <h1>🌐 World Steel — Decarbonisation Dashboard 2025</h1>
-  <p>Sources: worldsteel · IEA · UNIDO · Global Energy Monitor · IEEFA</p>
+  <p>Sources: worldsteel · IEA · UNIDO · Global Energy Monitor · IEEFA · SEAISI 2024</p>
 </header>
-
 <div class="tabs">
   <div class="tab active" onclick="switchTab('map',this)">🗺 Interactive Map</div>
   <div class="tab" onclick="switchTab('h2',this)">⚗️ H₂-DRI Projects</div>
   <div class="tab" onclick="switchTab('charts',this)">📊 Key Data Charts</div>
 </div>
 
-<!-- MAP PANEL -->
 <div class="panel active" id="panel-map">
   <div class="stats">
     <div class="stat"><div class="val">1,886 Mt</div><div class="lbl">Global steel 2024 · worldsteel</div></div>
-    <div class="stat"><div class="val">2.18 t</div><div class="lbl">CO₂e per tonne steel 2024</div></div>
+    <div class="stat"><div class="val">2.18 t</div><div class="lbl">CO₂e per tonne 2024</div></div>
+    <div class="stat"><div class="val">4.1 Gt</div><div class="lbl">Total sector CO₂e 2024</div></div>
     <div class="stat"><div class="val">70.4%</div><div class="lbl">BF-BOF share 2024</div></div>
     <div class="stat"><div class="val">29.1%</div><div class="lbl">EAF share 2024</div></div>
     <div class="stat"><div class="val">7–8%</div><div class="lbl">Of global GHG emissions</div></div>
     <div class="stat"><div class="val">~10 Mt</div><div class="lbl">Near-zero iron by 2030 · IEA</div></div>
   </div>
-
   <div class="controls">
-    <span>Colour bubbles by:</span>
-    <button class="mode-btn active" onclick="setMode('production',this)">Production Volume</button>
-    <button class="mode-btn" onclick="setMode('co2',this)">CO₂ Intensity</button>
-    <button class="mode-btn" onclick="setMode('eaf',this)">EAF Share</button>
+    <span>Colour by:</span>
+    <button class="mbtn active" onclick="setMode('prod',this)">Production</button>
+    <button class="mbtn" onclick="setMode('co2',this)">CO₂ Intensity</button>
+    <button class="mbtn" onclick="setMode('eaf',this)">EAF Share</button>
   </div>
-
   <div class="legend" id="legend">
-    <div class="legend-item"><div class="swatch" style="background:#c53030"></div>&gt;500 Mt/yr</div>
-    <div class="legend-item"><div class="swatch" style="background:#dd6b20"></div>100–500 Mt/yr</div>
-    <div class="legend-item"><div class="swatch" style="background:#d69e2e"></div>30–100 Mt/yr</div>
-    <div class="legend-item"><div class="swatch" style="background:#276749"></div>&lt;30 Mt/yr</div>
-    <div class="legend-item"><div class="swatch" style="background:#2b6cb0;border-radius:3px"></div>Active H₂-DRI Project ★</div>
+    <div class="li"><div class="sw" style="background:#c53030"></div>&gt;500 Mt/yr</div>
+    <div class="li"><div class="sw" style="background:#dd6b20"></div>100–500 Mt</div>
+    <div class="li"><div class="sw" style="background:#d69e2e"></div>30–100 Mt</div>
+    <div class="li"><div class="sw" style="background:#276749"></div>&lt;30 Mt</div>
+    <div class="li"><div class="sw" style="background:#2b6cb0;border-radius:3px"></div>H₂-DRI ★</div>
   </div>
-
+  <p style="font-size:.62rem;color:#718096;margin-bottom:5px;display:none" id="mob-hint">Tap any bubble to see country data</p>
   <div id="mapwrap">
-    <svg id="mapsvg"></svg>
-    <div class="tooltip" id="tooltip"></div>
-  </div>
-  <p style="font-size:0.66rem;color:#718096;margin-top:7px;">
-    Bubble size ∝ production volume. Colour = selected mode. Blue ★ = active H₂-DRI projects. Hover any bubble for full country data.
-  </p>
-</div>
-
-<!-- H2 PANEL -->
-<div class="panel" id="panel-h2">
-  <div style="margin-bottom:12px;">
-    <h3 style="font-size:0.9rem;color:#1a3a5c;margin-bottom:3px;">Active H₂-DRI Projects Globally</h3>
-    <p style="font-size:0.7rem;color:#718096;">Source: IEA Breakthrough Agenda Report 2025 · Global Energy Monitor 2025 · UNIDO 2025</p>
-  </div>
-  <table>
-    <thead><tr><th>Project</th><th>Country</th><th>Capacity</th><th>H₂ Type</th><th>Status</th><th>Year</th><th>Significance</th></tr></thead>
-    <tbody>
-      <tr><td><strong>HYBRIT / SSAB</strong></td><td>Sweden</td><td>1.3 Mt/yr</td><td><span class="badge green">Green</span></td><td><span class="badge cons">Demonstration</span></td><td>2026</td><td>World's first fossil-free steel; &gt;5,000 t produced at pilot</td></tr>
-      <tr><td><strong>Stegra (H2 Green Steel)</strong></td><td>Sweden</td><td>2.5 Mt/yr</td><td><span class="badge green">Green</span></td><td><span class="badge cons">Under Construction</span></td><td>2025–26</td><td>First large-scale 100% green H₂ DRI from commissioning</td></tr>
-      <tr><td><strong>Ovako / Hitachi Energy</strong></td><td>Sweden</td><td>20 MW electrolyser</td><td><span class="badge green">Green</span></td><td><span class="badge op">Operational</span></td><td>2023</td><td>First green H₂ for steel reheating globally</td></tr>
-      <tr><td><strong>Salzgitter SALCOS</strong></td><td>Germany</td><td>1.9 Mt/yr</td><td><span class="badge green">Green</span></td><td><span class="badge cons">Under Construction</span></td><td>2027</td><td>EU-funded full H₂-DRI-EAF conversion of integrated plant</td></tr>
-      <tr><td><strong>ArcelorMittal Hamburg</strong></td><td>Germany</td><td>0.1 Mt/yr DRI</td><td><span class="badge green">Green</span></td><td><span class="badge demo">Demo</span></td><td>2024</td><td>First retrofit of existing DRI shaft to 100% H₂</td></tr>
-      <tr><td><strong>ArcelorMittal Sestao</strong></td><td>Spain</td><td>1.6 Mt/yr</td><td><span class="badge green">Green</span></td><td><span class="badge demo">FID Deferred</span></td><td>TBC</td><td>FID deferred despite nearly €3B EU subsidies</td></tr>
-      <tr><td><strong>HBIS Group</strong></td><td>China</td><td>Pilot</td><td><span class="badge blue">Blue/Green</span></td><td><span class="badge demo">Demo</span></td><td>2023</td><td>First H₂-DRI demo in world's largest producing nation</td></tr>
-      <tr><td><strong>Jindal Steel (JSL)</strong></td><td>India</td><td>Pilot</td><td><span class="badge green">Green</span></td><td><span class="badge op">Operational</span></td><td>2024</td><td>First green H₂ plant in Indian stainless steel sector</td></tr>
-      <tr><td><strong>Emirates Steel (ESAD)</strong></td><td>UAE</td><td>9 Mt/yr DRI</td><td><span class="badge blue">Blue</span></td><td><span class="badge op">Operational</span></td><td>Existing</td><td>World's largest DRI complex; evaluating green H₂ transition</td></tr>
-      <tr><td><strong>Boston Metal (MOE)</strong></td><td>USA</td><td>Pilot</td><td><span class="badge green">Green (elec)</span></td><td><span class="badge demo">Demo</span></td><td>2026</td><td>Molten oxide electrolysis — electrolytic route bypassing H₂</td></tr>
-      <tr><td><strong>Tata Steel Port Talbot</strong></td><td>UK</td><td>3 Mt/yr</td><td><span class="badge blue">Transition</span></td><td><span class="badge cons">Under Construction</span></td><td>2027</td><td>BF → EAF conversion; £500M UK government funded</td></tr>
-    </tbody>
-  </table>
-  <p style="font-size:0.67rem;color:#718096;margin-top:10px;">IEA BAR 2025: ≥10 H₂-DRI projects approved in Europe; first large-scale plants 2026–2028. Near-zero iron capacity globally: ~80 Mt. Only 10 Mt achievable as near-zero by 2030.</p>
-</div>
-
-<!-- CHARTS PANEL -->
-<div class="panel" id="panel-charts">
-  <div class="chart-wrap">
-    <h3>CO₂ Intensity by Production Route — worldsteel Sustainability Indicators 2024</h3>
-    <div class="bar-row"><div class="bar-label">BF-BOF</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:#c53030;"></div></div><div class="bar-val">2.33 t CO₂/t steel</div></div>
-    <div class="bar-row"><div class="bar-label">Global avg 2024</div><div class="bar-track"><div class="bar-fill" style="width:94%;background:#dd6b20;"></div></div><div class="bar-val">2.18 t CO₂/t steel</div></div>
-    <div class="bar-row"><div class="bar-label">DRI-EAF (nat. gas)</div><div class="bar-track"><div class="bar-fill" style="width:62%;background:#d69e2e;"></div></div><div class="bar-val">1.45 t CO₂/t steel</div></div>
-    <div class="bar-row"><div class="bar-label">Scrap-EAF</div><div class="bar-track"><div class="bar-fill" style="width:29%;background:#38a169;"></div></div><div class="bar-val">0.68 t CO₂/t steel</div></div>
-    <div class="bar-row"><div class="bar-label">H₂-DRI-EAF (green)</div><div class="bar-track"><div class="bar-fill" style="width:9%;background:#276749;"></div></div><div class="bar-val">~0.2 t CO₂/t steel</div></div>
-  </div>
-  <div class="chart-wrap">
-    <h3>BF-BOF vs EAF Share by Country 2024 — worldsteel / SEAISI 2024</h3>
-    <div id="chart-eaf"></div>
-  </div>
-  <div class="chart-wrap">
-    <h3>Green H₂ Cost vs Steelmaking Threshold — IEEFA 2024 · IEA GHR 2025</h3>
-    <div class="bar-row"><div class="bar-label">Today (2025)</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:#c53030;"></div></div><div class="bar-val">$4.5–6.5/kg</div></div>
-    <div class="bar-row"><div class="bar-label">Optimistic 2030</div><div class="bar-track"><div class="bar-fill" style="width:61%;background:#d69e2e;"></div></div><div class="bar-val">$2.5–4.0/kg</div></div>
-    <div class="bar-row"><div class="bar-label">Target threshold</div><div class="bar-track"><div class="bar-fill" style="width:31%;background:#276749;"></div></div><div class="bar-val">~$1.5–2/kg ✓</div></div>
-    <p style="font-size:0.68rem;color:#718096;margin-top:8px;">Green H₂ production: 0.8 Mt in 2024 (&lt;1% of demand). Announced 2030 potential fell 49 → 37 Mtpa (IEA GHR 2025).</p>
-  </div>
-  <div class="chart-wrap">
-    <h3>BF Reinvestment Window — UNIDO 2025</h3>
-    <div class="bar-row"><div class="bar-label">Requiring reinvest by 2030</div><div class="bar-track"><div class="bar-fill" style="width:70%;background:#c53030;"></div></div><div class="bar-val">~70% of global fleet</div></div>
-    <p style="font-size:0.68rem;color:#718096;margin-top:8px;">Capital committed now to BF-BOF locks in high-carbon operations until 2060–2065 — the critical H₂-DRI-EAF investment window.</p>
-  </div>
-</div>
-
-<footer>Built for CN5190 Hydrogen Energy and Technology coursework</footer>
-
-<script>
-// ── COUNTRY DATA (lon, lat = centre of country) ──────────────────────────────
-const COUNTRIES = [
-  { name:'China',        prod:1005, lon:105,  lat:35,   co2:2.4, eaf:10, bf:90, h2:'HBIS Zhangjiakou H₂-DRI demo. Targeting 15% EAF by 2025, 20% by 2028–30. Largest BF-BOF nation globally.' },
-  { name:'India',        prod:150,  lon:80,   lat:22,   co2:2.5, eaf:44, bf:56, h2:'Jindal green H₂ pilot 2024. 60% of DRI coal-based. Responsible for 1/3 of all new global steel capacity — major lock-in risk.' },
-  { name:'Japan',        prod:84,   lon:138,  lat:37,   co2:2.1, eaf:26, bf:74, h2:'JFE & Kobe Steel EAF investments. Targeting 30% emissions cut by 2030. 74% BF-BOF dominant.' },
-  { name:'USA',          prod:80,   lon:-100, lat:38,   co2:1.0, eaf:72, bf:28, h2:'Boston Metal MOE demo. 72% EAF already — among world\'s cleanest large producers. Multiple H₂-DRI feasibility studies active.' },
-  { name:'Russia',       prod:76,   lon:60,   lat:57,   co2:1.9, eaf:30, bf:70, h2:'Limited H₂ activity. Coal-dominant. Sanctions have significantly slowed low-carbon investment.' },
-  { name:'S. Korea',     prod:67,   lon:128,  lat:36,   co2:2.1, eaf:32, bf:68, h2:'POSCO 2.5 Mt/yr EAF under construction at Gwangyang. H₂-DRI pathway under evaluation.' },
-  { name:'Germany',      prod:35,   lon:10,   lat:51,   co2:1.4, eaf:35, bf:65, h2:'Salzgitter SALCOS 1.9 Mt/yr + ArcelorMittal Hamburg 100% H₂ DRI retrofit. EU\'s H₂-DRI leaders.' },
-  { name:'Turkey',       prod:34,   lon:33,   lat:39,   co2:0.8, eaf:72, bf:28, h2:'Highest EAF share globally. Low-carbon pathways (LCP) plan 2024 targeting 17% cut by 2030.' },
-  { name:'Brazil',       prod:34,   lon:-52,  lat:-10,  co2:1.5, eaf:25, bf:75, h2:'Unique charcoal BF route. Excellent green H₂ + HBI export potential due to abundant solar + DR-grade ore.' },
-  { name:'Iran',         prod:33,   lon:53,   lat:32,   co2:1.8, eaf:55, bf:45, h2:'World\'s largest DRI producer (28% of global DRI). Gas-based. Evaluating H₂ blending options.' },
-  { name:'Italy',        prod:20,   lon:12,   lat:43,   co2:0.9, eaf:80, bf:20, h2:'80% EAF — among cleanest EU producers. Acciaierie d\'Italia EAF conversion underway.' },
-  { name:'France',       prod:11,   lon:2,    lat:47,   co2:0.9, eaf:65, bf:35, h2:'ArcelorMittal Dunkirk H₂-DRI project under development. EU CBAM driving decarbonisation.' },
-  { name:'Sweden',       prod:4,    lon:17,   lat:62,   co2:0.5, eaf:60, bf:40, h2:'HYBRIT pilot + Stegra 2.5 Mt/yr under construction — global green steel leaders. Cheap hydropower + premium ore.' },
-  { name:'Australia',    prod:5,    lon:134,  lat:-25,  co2:1.9, eaf:5,  bf:95, h2:'Ideal renewable + DR-grade ore geography. Emerging HBI export hub for Asia-Pacific markets.' },
-  { name:'S. Africa',    prod:5,    lon:25,   lat:-29,  co2:2.2, eaf:40, bf:60, h2:'ArcelorMittal SA evaluating green H₂. Abundant solar/wind potential for future H₂ production.' },
-  { name:'Saudi Arabia', prod:9,    lon:45,   lat:24,   co2:1.5, eaf:50, bf:50, h2:'Ma\'aden + SABIC green H₂ ambitions. VISION 2030 alignment driving low-carbon steel interest.' },
-  { name:'UAE',          prod:3,    lon:54,   lat:24,   co2:1.4, eaf:0,  bf:0,  h2:'Emirates Steel ESAD — world\'s largest DRI complex (9 Mt/yr). Evaluating green H₂ transition.' },
-  { name:'Indonesia',    prod:17,   lon:117,  lat:-2,   co2:2.4, eaf:45, bf:55, h2:'Krakatau POSCO 3 Mt BF under development — significant lock-in risk for 20–40 years.' },
-  { name:'Vietnam',      prod:20,   lon:106,  lat:16,   co2:2.3, eaf:30, bf:70, h2:'Formosa Group 14 Mt BF planned — major emissions lock-in risk if approved and built.' },
-  { name:'Mexico',       prod:19,   lon:-102, lat:24,   co2:1.2, eaf:75, bf:25, h2:'High EAF share. Natural gas DRI with H₂ blend potential in northern industrial zones.' },
-  { name:'Spain',        prod:11,   lon:-4,   lat:40,   co2:0.9, eaf:75, bf:25, h2:'ArcelorMittal Sestao green steel — FID deferred despite nearly €3B EU subsidies.' },
-  { name:'UK',           prod:6,    lon:-2,   lat:53,   co2:0.8, eaf:80, bf:20, h2:'Tata Steel Port Talbot EAF conversion (£500M UK gov funded). Target operational 2027.' },
-  { name:'Canada',       prod:13,   lon:-95,  lat:56,   co2:1.1, eaf:60, bf:40, h2:'Dofasco EAF transition underway. ArcelorMittal Hamilton under review.' },
-  { name:'Oman',         prod:3,    lon:57,   lat:21,   co2:1.4, eaf:10, bf:0,  h2:'Strong wind/solar resources. Oman targeting regional HBI export hub status.' },
-  { name:'Namibia',      prod:0.5,  lon:18,   lat:-22,  co2:0.1, eaf:0,  bf:0,  h2:'Hyphen Hydrogen Energy 3 GW green H₂ project. Ideal ore + renewable geography — future HBI exporter.' },
-  { name:'Poland',       prod:8,    lon:20,   lat:52,   co2:1.8, eaf:40, bf:60, h2:'Coal-heavy grid limiting EAF decarbonisation. EU CBAM driving transition planning.' },
-  { name:'Belgium',      prod:7,    lon:4,    lat:50,   co2:1.5, eaf:30, bf:70, h2:'ArcelorMittal Gent H₂-DRI feasibility study. Major integrated BF-BOF site.' },
-  { name:'Netherlands',  prod:7,    lon:5,    lat:52,   co2:1.5, eaf:15, bf:85, h2:'Tata Steel IJmuiden H₂-DRI transition planning (previously DRI+CCUS). Coal-dominant currently.' },
-  { name:'Taiwan',       prod:20,   lon:121,  lat:24,   co2:1.8, eaf:55, bf:45, h2:'China Steel Corp evaluating H₂ pathways. Government net-zero 2050 target.' },
-  { name:'Egypt',        prod:9,    lon:30,   lat:27,   co2:1.0, eaf:100,bf:0,  h2:'100% EAF/DRI route. Ezz Steel largest producer. Green H₂ potential from solar abundant resources.' },
-];
-
-const H2SITES = [
-  { name:'HYBRIT/Stegra', lon:20,   lat:66   },
-  { name:'Salzgitter',    lon:10.3, lat:52.1 },
-  { name:'AM Hamburg',    lon:9.9,  lat:53.5 },
-  { name:'Tata Talbot',   lon:-3.8, lat:51.6 },
-  { name:'AM Sestao',     lon:-3,   lat:43.3 },
-  { name:'HBIS China',    lon:114,  lat:40.8 },
-  { name:'Jindal India',  lon:75.7, lat:29.2 },
-  { name:'Boston Metal',  lon:-71,  lat:42   },
-  { name:'ESAD UAE',      lon:54.4, lat:24.5 },
-];
-
-// EAF CHART
-const eafData = [
-  {c:'Egypt',       eaf:100,bf:0  },
-  {c:'Italy',       eaf:80, bf:20 },
-  {c:'UK',          eaf:80, bf:20 },
-  {c:'Turkey',      eaf:72, bf:28 },
-  {c:'USA',         eaf:72, bf:28 },
-  {c:'Spain/Mexico',eaf:75, bf:25 },
-  {c:'Canada',      eaf:60, bf:40 },
-  {c:'France',      eaf:65, bf:35 },
-  {c:'EU avg',      eaf:44, bf:56 },
-  {c:'Iran',        eaf:55, bf:45 },
-  {c:'Taiwan',      eaf:55, bf:45 },
-  {c:'India',       eaf:44, bf:56 },
-  {c:'Indonesia',   eaf:45, bf:55 },
-  {c:'S. Korea',    eaf:32, bf:68 },
-  {c:'Brazil',      eaf:25, bf:75 },
-  {c:'Japan',       eaf:26, bf:74 },
-  {c:'Russia',      eaf:30, bf:70 },
-  {c:'Vietnam',     eaf:30, bf:70 },
-  {c:'China',       eaf:10, bf:90 },
-];
-const ce = document.getElementById('chart-eaf');
-eafData.forEach(d => {
-  ce.innerHTML += `<div class="bar-row">
-    <div class="bar-label">${d.c}</div>
-    <div class="bar-track">
-      <div style="position:absolute;left:0;top:0;width:${d.eaf}%;height:100%;background:#276749;"></div>
-      <div style="position:absolute;left:${d.eaf}%;top:0;width:${d.bf}%;height:100%;background:#c53030;"></div>
+    <svg id="mapsvg" viewBox="0 0 960 480"></svg>
+    <div id="tip" style="position:absolute">
+      <button id="closebtn" onclick="closeTip()">✕</button>
+      <div id="tipcontent"></div>
     </div>
-    <div class="bar-val"><span style="color:#276749">${d.eaf}% EAF</span> / <span style="color:#c53030">${d.bf}% BF</span></div>
-  </div>`;
+  </div>
+  <p style="font-size:clamp(.58rem,1.7vw,.63rem);color:#718096;margin-top:7px">Bubble size ∝ production · Colour = selected mode · Blue ★ = H₂-DRI project sites · Tap/hover any bubble</p>
+</div>
+
+<div class="panel" id="panel-h2">
+  <div style="font-size:clamp(.8rem,2.5vw,.9rem);font-weight:700;color:#1a3a5c;margin-bottom:4px">Active H₂-DRI Projects Globally</div>
+  <div style="font-size:clamp(.6rem,1.8vw,.68rem);color:#718096;margin-bottom:10px">IEA Breakthrough Agenda Report 2025 · Global Energy Monitor 2025 · UNIDO 2025</div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Project</th><th>Country</th><th>Capacity</th><th>H₂ Type</th><th>Status</th><th>Year</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td><strong>HYBRIT / SSAB</strong></td><td>Sweden</td><td>1.3 Mt/yr</td><td><span class="badge" style="background:#c6f6d5;color:#276749">Green</span></td><td><span class="badge" style="background:#e9d8fd;color:#553c9a">Demo</span></td><td>2026</td><td>&gt;5,000 t; 0.0 t CO₂/t steel</td></tr>
+      <tr><td><strong>Stegra (H2 Green Steel)</strong></td><td>Sweden</td><td>2.5 Mt/yr</td><td><span class="badge" style="background:#c6f6d5;color:#276749">Green</span></td><td><span class="badge" style="background:#e9d8fd;color:#553c9a">Construction</span></td><td>2025–26</td><td>First large-scale 100% green H₂ DRI</td></tr>
+      <tr><td><strong>Ovako / Hitachi Energy</strong></td><td>Sweden</td><td>20 MW</td><td><span class="badge" style="background:#c6f6d5;color:#276749">Green</span></td><td><span class="badge" style="background:#c6f6d5;color:#276749">Operational</span></td><td>2023</td><td>First green H₂ for steel reheating</td></tr>
+      <tr><td><strong>Salzgitter SALCOS</strong></td><td>Germany</td><td>1.9 Mt/yr</td><td><span class="badge" style="background:#c6f6d5;color:#276749">Green</span></td><td><span class="badge" style="background:#e9d8fd;color:#553c9a">Construction</span></td><td>2027</td><td>EU-funded H₂-DRI-EAF conversion</td></tr>
+      <tr><td><strong>ArcelorMittal Hamburg</strong></td><td>Germany</td><td>0.1 Mt/yr</td><td><span class="badge" style="background:#c6f6d5;color:#276749">Green</span></td><td><span class="badge" style="background:#feebc8;color:#7b341e">Demo</span></td><td>2024</td><td>First DRI shaft retrofit to 100% H₂</td></tr>
+      <tr><td><strong>ArcelorMittal Sestao</strong></td><td>Spain</td><td>1.6 Mt/yr</td><td><span class="badge" style="background:#c6f6d5;color:#276749">Green</span></td><td><span class="badge" style="background:#fed7d7;color:#c53030">FID Deferred</span></td><td>TBC</td><td>Deferred despite €3B EU subsidies</td></tr>
+      <tr><td><strong>HBIS Group</strong></td><td>China</td><td>Pilot</td><td><span class="badge" style="background:#bee3f8;color:#2b6cb0">Blue/Green</span></td><td><span class="badge" style="background:#feebc8;color:#7b341e">Demo</span></td><td>2023</td><td>First H₂-DRI demo in China</td></tr>
+      <tr><td><strong>Jindal Steel</strong></td><td>India</td><td>Pilot</td><td><span class="badge" style="background:#c6f6d5;color:#276749">Green</span></td><td><span class="badge" style="background:#c6f6d5;color:#276749">Operational</span></td><td>2024</td><td>First green H₂ in Indian steel sector</td></tr>
+      <tr><td><strong>Emirates Steel ESAD</strong></td><td>UAE</td><td>9 Mt/yr DRI</td><td><span class="badge" style="background:#bee3f8;color:#2b6cb0">Blue</span></td><td><span class="badge" style="background:#c6f6d5;color:#276749">Operational</span></td><td>Existing</td><td>World's largest DRI complex</td></tr>
+      <tr><td><strong>Boston Metal (MOE)</strong></td><td>USA</td><td>Pilot</td><td><span class="badge" style="background:#c6f6d5;color:#276749">Green (elec)</span></td><td><span class="badge" style="background:#feebc8;color:#7b341e">Demo</span></td><td>2026</td><td>Molten oxide electrolysis — no H₂</td></tr>
+      <tr><td><strong>Tata Steel Port Talbot</strong></td><td>UK</td><td>3 Mt/yr</td><td><span class="badge" style="background:#bee3f8;color:#2b6cb0">EAF transition</span></td><td><span class="badge" style="background:#e9d8fd;color:#553c9a">Construction</span></td><td>2027</td><td>BF→EAF; £500M UK gov funded</td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:clamp(.6rem,1.8vw,.65rem);color:#718096;margin-top:9px">IEA BAR 2025: ≥10 H₂-DRI projects in Europe. Near-zero iron capacity ~80 Mt. Only 10 Mt achievable by 2030.</p>
+</div>
+
+<div class="panel" id="panel-charts">
+  <div class="cw"><h3>CO₂ Intensity by Production Route — worldsteel 2024</h3>
+    <div class="br"><div class="bl">BF-BOF</div><div class="bt"><div class="bf" style="width:100%;background:#c53030"></div></div><div class="bv">2.33 t CO₂/t</div></div>
+    <div class="br"><div class="bl">Global avg 2024</div><div class="bt"><div class="bf" style="width:94%;background:#dd6b20"></div></div><div class="bv">2.18 t CO₂/t</div></div>
+    <div class="br"><div class="bl">DRI-EAF (gas)</div><div class="bt"><div class="bf" style="width:62%;background:#d69e2e"></div></div><div class="bv">1.45 t CO₂/t</div></div>
+    <div class="br"><div class="bl">Scrap-EAF</div><div class="bt"><div class="bf" style="width:29%;background:#38a169"></div></div><div class="bv">0.68 t CO₂/t</div></div>
+    <div class="br"><div class="bl">H₂-DRI-EAF (green)</div><div class="bt"><div class="bf" style="width:9%;background:#276749"></div></div><div class="bv">~0.2 t CO₂/t</div></div>
+    <p style="font-size:.65rem;color:#718096;margin-top:7px">91% CO₂ reduction vs BF-BOF. Each kg green H₂ avoids ~25 kg CO₂.</p>
+  </div>
+  <div class="cw"><h3>BF-BOF vs EAF Share by Country 2024 — worldsteel / SEAISI 2024</h3><div id="eafchart"></div></div>
+  <div class="cw"><h3>Green H₂ Cost vs Steelmaking Threshold — IEEFA 2024 · IEA GHR 2025</h3>
+    <div class="br"><div class="bl">Today (2025)</div><div class="bt"><div class="bf" style="width:100%;background:#c53030"></div></div><div class="bv">$4.5–6.5/kg</div></div>
+    <div class="br"><div class="bl">Optimistic 2030</div><div class="bt"><div class="bf" style="width:61%;background:#d69e2e"></div></div><div class="bv">$2.5–4.0/kg</div></div>
+    <div class="br"><div class="bl">Threshold needed</div><div class="bt"><div class="bf" style="width:31%;background:#276749"></div></div><div class="bv">~$1.5–2/kg ✓</div></div>
+    <p style="font-size:.65rem;color:#718096;margin-top:7px">Green H₂: 0.8 Mt in 2024. 2030 potential fell 49→37 Mtpa (IEA GHR 2025).</p>
+  </div>
+  <div class="cw"><h3>Cost Premium vs Conventional — Bright et al. 2025</h3>
+    <div class="br"><div class="bl">H₂-DRI-EAF (green)</div><div class="bt"><div class="bf" style="width:79%;background:#c53030"></div></div><div class="bv">+79% cost</div></div>
+    <div class="br"><div class="bl">DRI + CCS-EAF</div><div class="bt"><div class="bf" style="width:7%;background:#d69e2e"></div></div><div class="bv">+7% cost</div></div>
+    <div class="br"><div class="bl">BF-BOF baseline</div><div class="bt"><div class="bf" style="width:1%;background:#276749"></div></div><div class="bv">0%</div></div>
+  </div>
+  <div class="cw"><h3>BF Reinvestment Window — UNIDO 2025</h3>
+    <div class="br"><div class="bl">Requiring reinvestment</div><div class="bt"><div class="bf" style="width:70%;background:#c53030"></div></div><div class="bv">~70% by 2030</div></div>
+    <p style="font-size:.65rem;color:#718096;margin-top:7px">Capital committed now to BF-BOF locks in emissions until 2060–2065.</p>
+  </div>
+</div>
+<footer>Built for CN5190 Hydrogen Energy and Technology coursework · rohithrams.github.io/DecarbonisingSteel-Industry-by-Rohith</footer>
+
+<!-- D3 + TopoJSON from CDN — works on GitHub Pages -->
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<script>
+if(window.innerWidth<600) document.getElementById('mob-hint').style.display='block';
+
+const DATA=[
+  {n:'China',prod:1005,lon:105,lat:35,co2:2.4,eaf:10,bf:90,info:"HBIS H₂-DRI demo. No new BF-BOF added H1 2024. Targeting 15% EAF by 2025. World's largest BF-BOF operator."},
+  {n:'India',prod:150,lon:80,lat:22,co2:2.5,eaf:44,bf:56,info:"Jindal green H₂ pilot 2024. Responsible for 1/3 of all new global steel capacity. Major lock-in risk."},
+  {n:'Japan',prod:84,lon:138,lat:37,co2:2.1,eaf:26,bf:74,info:"JFE & Kobe Steel EAF investments. 30% emissions cut target by 2030."},
+  {n:'USA',prod:80,lon:-98,lat:38,co2:1.0,eaf:72,bf:28,info:"Boston Metal MOE demo (no H₂ needed). 72% EAF already. IRA $8B hydrogen hub funding."},
+  {n:'Russia',prod:76,lon:60,lat:57,co2:1.9,eaf:30,bf:70,info:"Limited H₂ activity. Coal/gas dominant. Sanctions slowing low-carbon investment."},
+  {n:'S.Korea',prod:67,lon:128,lat:37,co2:2.1,eaf:32,bf:68,info:"POSCO 2.5 Mt/yr EAF under construction at Gwangyang. H₂-DRI pathway under evaluation."},
+  {n:'Germany',prod:35,lon:10,lat:51,co2:1.4,eaf:35,bf:65,info:"Salzgitter SALCOS 1.9 Mt/yr. AM Hamburg 100% H₂ DRI retrofit 2024."},
+  {n:'Turkey',prod:34,lon:33,lat:39,co2:0.8,eaf:72,bf:28,info:"Highest EAF share globally (72%). LCP initiative: 17% cut by 2030, 99% by 2053."},
+  {n:'Brazil',prod:34,lon:-52,lat:-10,co2:1.5,eaf:25,bf:75,info:"Unique charcoal BF route. Excellent green H₂ + HBI export potential."},
+  {n:'Iran',prod:33,lon:53,lat:32,co2:1.8,eaf:55,bf:45,info:"World's largest DRI producer — 28% of global DRI. Gas-based."},
+  {n:'Italy',prod:20,lon:12,lat:43,co2:0.9,eaf:80,bf:20,info:"80% EAF — among cleanest EU producers."},
+  {n:'France',prod:11,lon:2,lat:47,co2:0.9,eaf:65,bf:35,info:"AM Dunkirk H₂-DRI project under development."},
+  {n:'Sweden',prod:4,lon:17,lat:62,co2:0.5,eaf:60,bf:40,info:"HYBRIT >5000t pilot done. Stegra 2.5 Mt/yr under construction. Global green steel leaders."},
+  {n:'Vietnam',prod:20,lon:106,lat:16,co2:2.3,eaf:30,bf:70,info:"Formosa Group 14 Mt BF planned — major lock-in risk."},
+  {n:'Mexico',prod:19,lon:-102,lat:24,co2:1.2,eaf:75,bf:25,info:"75% EAF. Natural gas DRI with H₂ blend potential."},
+  {n:'Spain',prod:11,lon:-4,lat:40,co2:0.9,eaf:75,bf:25,info:"AM Sestao FID deferred despite €3B EU subsidies."},
+  {n:'UK',prod:6,lon:-2,lat:54,co2:0.8,eaf:80,bf:20,info:"Tata Port Talbot BF→EAF: £500M UK gov funded. BF closed 2024."},
+  {n:'Canada',prod:13,lon:-96,lat:56,co2:1.1,eaf:60,bf:40,info:"Dofasco EAF transition. 60% EAF already."},
+  {n:'Australia',prod:5,lon:134,lat:-25,co2:1.9,eaf:5,bf:95,info:"95% BF-BOF but ideal renewable + ore geography. Emerging HBI export hub."},
+  {n:'S.Africa',prod:5,lon:25,lat:-29,co2:2.2,eaf:40,bf:60,info:"AM SA evaluating green H₂. Abundant solar/wind."},
+  {n:'Indonesia',prod:17,lon:117,lat:-2,co2:2.4,eaf:45,bf:55,info:"Krakatau POSCO 3 Mt BF — significant lock-in risk."},
+  {n:'Egypt',prod:9,lon:30,lat:27,co2:1.0,eaf:100,bf:0,info:"100% EAF/DRI. Abundant solar for green H₂."},
+  {n:'UAE',prod:3,lon:54,lat:24,co2:1.4,eaf:0,bf:0,info:"ESAD — world's largest DRI complex (9 Mt/yr)."},
+  {n:'Poland',prod:8,lon:20,lat:52,co2:1.9,eaf:40,bf:60,info:"Coal-heavy grid. EU CBAM/ETS driving transition."},
+  {n:'Taiwan',prod:20,lon:121,lat:24,co2:1.8,eaf:55,bf:45,info:"China Steel Corp evaluating H₂. Net-zero 2050."},
+  {n:'Netherlands',prod:7,lon:5,lat:52,co2:1.6,eaf:15,bf:85,info:"Tata IJmuiden shifting to EAF transition."},
+  {n:'Belgium',prod:7,lon:4,lat:50,co2:1.5,eaf:30,bf:70,info:"AM Gent BF-BOF. H₂-DRI feasibility ongoing."},
+  {n:'Namibia',prod:0.5,lon:18,lat:-22,co2:0.1,eaf:0,bf:0,info:"Hyphen 3 GW green H₂. Ideal for HBI export."},
+  {n:'Oman',prod:3,lon:57,lat:21,co2:1.4,eaf:10,bf:0,info:"Strong solar/wind. HBI export hub potential."},
+  {n:'S.Arabia',prod:9,lon:45,lat:24,co2:1.5,eaf:50,bf:50,info:"VISION 2030 driving low-carbon steel."},
+];
+const PINS=[
+  {n:'HYBRIT/Stegra',lon:20,lat:66},{n:'Salzgitter',lon:10.3,lat:52.1},
+  {n:'AM Hamburg',lon:9.9,lat:53.5},{n:'Tata Talbot',lon:-3.8,lat:51.6},
+  {n:'HBIS China',lon:114,lat:40.8},{n:'Jindal',lon:75.7,lat:29.2},
+  {n:'Boston Metal',lon:-71,lat:42},{n:'ESAD UAE',lon:54.4,lat:24.5},
+];
+
+// EAF chart
+const eafRows=[
+  {c:'Egypt',eaf:100},{c:'Italy',eaf:80},{c:'UK',eaf:80},{c:'Spain',eaf:75},
+  {c:'Mexico',eaf:75},{c:'Turkey',eaf:72},{c:'USA',eaf:72},{c:'France',eaf:65},
+  {c:'Canada',eaf:60},{c:'Sweden',eaf:60},{c:'Taiwan',eaf:55},{c:'Iran',eaf:55},
+  {c:'India',eaf:44},{c:'EU avg',eaf:44},{c:'Indonesia',eaf:45},{c:'S.Korea',eaf:32},
+  {c:'Russia',eaf:30},{c:'Vietnam',eaf:30},{c:'Brazil',eaf:25},{c:'Japan',eaf:26},{c:'China',eaf:10},
+];
+const ec=document.getElementById('eafchart');
+eafRows.forEach(d=>{
+  ec.innerHTML+=`<div class="br"><div class="bl">${d.c}</div><div class="bt">
+    <div style="position:absolute;left:0;top:0;width:${d.eaf}%;height:100%;background:#276749"></div>
+    <div style="position:absolute;left:${d.eaf}%;top:0;width:${100-d.eaf}%;height:100%;background:#c53030"></div>
+  </div><div class="bv"><span style="color:#276749">${d.eaf}%</span>/<span style="color:#c53030">${100-d.eaf}%</span></div></div>`;
 });
-ce.innerHTML += `<div style="display:flex;gap:16px;margin-top:8px;font-size:0.67rem;">
-  <span style="color:#276749">■ EAF (lower emissions)</span>
-  <span style="color:#c53030">■ BF-BOF (higher emissions)</span></div>`;
+ec.innerHTML+=`<div style="display:flex;gap:14px;margin-top:7px;font-size:.65rem"><span style="color:#276749">■ EAF (lower emissions)</span><span style="color:#c53030">■ BF-BOF</span></div>`;
 
-// ── D3 MAP ────────────────────────────────────────────────────────────────────
-let colourMode = 'production';
+// ── MAP ──────────────────────────────────────────────────────────────────────
+let mode='prod';
+const isMob=()=>window.innerWidth<600;
+const tip=document.getElementById('tip');
+const tipc=document.getElementById('tipcontent');
+const mw=document.getElementById('mapwrap');
+const svg=d3.select('#mapsvg');
+const W=960,H=480;
 
-const prodCol = v => v>=500?'#c53030':v>=100?'#dd6b20':v>=30?'#d69e2e':'#276749';
-const co2Col  = v => v<1.0?'#276749':v<1.5?'#38a169':v<2.0?'#d69e2e':'#c53030';
-const eafCol  = v => v>=60?'#276749':v>=40?'#38a169':v>=20?'#d69e2e':'#c53030';
-const getCol  = d => colourMode==='co2'?co2Col(d.co2):colourMode==='eaf'?eafCol(d.eaf):prodCol(d.prod);
+const proj=d3.geoNaturalEarth1().scale(153).translate([W/2,H/2]);
+const path=d3.geoPath().projection(proj);
 
-const tip = document.getElementById('tooltip');
-const wrap = document.getElementById('mapwrap');
+svg.attr('viewBox',`0 0 ${W} ${H}`);
 
-// Set up SVG dimensions
-const W = Math.min(window.innerWidth - 48, 1100);
-const H = Math.round(W * 0.54);
-wrap.style.height = H + 'px';
-
-const svg = d3.select('#mapsvg')
-  .attr('viewBox', `0 0 ${W} ${H}`)
-  .attr('width', W)
-  .attr('height', H);
-
-// Use Mercator projection — gives the straight rectangular map look
-const proj = d3.geoMercator()
-  .scale(W / 6.5)
-  .center([15, 20])          // centre on Europe/Africa slightly
-  .translate([W / 2, H / 2]);
-
-const pathGen = d3.geoPath().projection(proj);
-
-// Ocean background (full rect)
-svg.append('rect')
-  .attr('width', W).attr('height', H)
-  .attr('fill', '#c8e0f0');
+// Ocean
+svg.append('path').datum({type:'Sphere'}).attr('class','sphere').attr('d',path).attr('fill','#d4eaf7');
 
 // Graticule
-svg.append('path')
-  .datum(d3.geoGraticule()())
-  .attr('class','graticule')
-  .attr('d', pathGen);
+svg.append('path').datum(d3.geoGraticule()()).attr('class','graticule').attr('d',path)
+  .attr('fill','none').attr('stroke','#c5dcea').attr('stroke-width',.4);
 
-// Tropic lines
-[[23.5,'Tropic of Cancer'],[-23.5,'Tropic of Capricorn']].forEach(([lat,lbl]) => {
-  const line = { type:'Feature', geometry:{ type:'LineString', coordinates:[[-180,lat],[180,lat]] }};
-  svg.append('path').datum(line).attr('d',pathGen)
-    .attr('fill','none').attr('stroke','#5ba85b').attr('stroke-width',0.8)
-    .attr('stroke-dasharray','6,5').attr('opacity',0.5);
-  const [tx,ty] = proj([-170, lat]);
-  svg.append('text').attr('x',tx).attr('y',ty-3)
-    .attr('font-size',8).attr('fill','#5ba85b').attr('opacity',0.7)
-    .attr('font-family','Segoe UI,Arial,sans-serif').text(lbl);
+// Tropic labels
+const tropics=[{lat:23.5,lbl:'Tropic of Cancer'},{lat:-23.5,lbl:'Tropic of Capricorn'},{lat:0,lbl:'Equator'}];
+tropics.forEach(t=>{
+  const line={type:'Feature',geometry:{type:'LineString',coordinates:[[-180,t.lat],[180,t.lat]]}};
+  svg.append('path').datum(line).attr('d',path)
+    .attr('fill','none')
+    .attr('stroke',t.lat===0?'#a0bece':'#5ba85b')
+    .attr('stroke-width',t.lat===0?1:.8)
+    .attr('stroke-dasharray',t.lat===0?'none':'5,4')
+    .attr('opacity',.65);
+  const [tx,ty]=proj([t.lat===0?-170:-170,t.lat]);
+  svg.append('text').attr('x',tx+4).attr('y',t.lat<0?ty+12:ty-3)
+    .attr('font-size',8).attr('fill',t.lat===0?'#7aaec0':'#4a9a5a')
+    .attr('font-family','Segoe UI,Arial').attr('opacity',.85).text(t.lbl);
 });
 
-// LAYER ORDER: land → borders → BUBBLES (on top!)
-const landG    = svg.append('g').attr('id','landG');
-const borderG  = svg.append('g').attr('id','borderG');
-const bubbleG  = svg.append('g').attr('id','bubbleG');  // bubbles ABOVE land
-const pinG     = svg.append('g').attr('id','pinG');      // pins above bubbles
+// Land + bubbles groups
+const landG=svg.append('g');
+const bubbleG=svg.append('g');
+const pinG=svg.append('g');
 
-// Load world TopoJSON
-fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
-  .then(r => r.json())
-  .then(world => {
-    const countries110 = topojson.feature(world, world.objects.countries);
-    const borders = topojson.mesh(world, world.objects.countries, (a,b) => a!==b);
+// Colour helpers
+const pc=v=>v>=500?'#c53030':v>=100?'#dd6b20':v>=30?'#d69e2e':'#276749';
+const cc=v=>v<1.0?'#276749':v<1.5?'#38a169':v<2.0?'#d69e2e':'#c53030';
+const ec2=v=>v>=60?'#276749':v>=40?'#38a169':v>=20?'#d69e2e':'#c53030';
+const gc=d=>mode==='co2'?cc(d.co2):mode==='eaf'?ec2(d.eaf):pc(d.prod);
 
-    landG.selectAll('path')
-      .data(countries110.features)
-      .join('path')
-      .attr('class','land')
-      .attr('d', pathGen);
+function tagH(d){
+  if(mode==='co2'){if(d.co2<1.0)return'<span class="tag lo">Low CO₂</span>';if(d.co2<2.0)return'<span class="tag mid">Medium CO₂</span>';return'<span class="tag hi">High CO₂</span>';}
+  if(mode==='eaf'){if(d.eaf>=60)return'<span class="tag lo">EAF-dominant</span>';if(d.eaf>=30)return'<span class="tag mid">Mixed routes</span>';return'<span class="tag hi">BF-BOF dominant</span>';}
+  return'';
+}
 
-    borderG.append('path')
-      .datum(borders)
-      .attr('fill','none')
-      .attr('stroke','#ffffff')
-      .attr('stroke-width', 0.5)
-      .attr('d', pathGen);
+function closeTip(){tip.style.display='none';}
 
-    drawBubbles();
-  })
-  .catch(() => {
-    // fallback placeholder if CDN unreachable
-    svg.append('rect').attr('x',0).attr('y',0).attr('width',W).attr('height',H).attr('fill','#c8e0f0');
-    drawBubbles();
-  });
+function showTip(event,d){
+  tipc.innerHTML=`<strong>${d.n}</strong>
+    <div class="trow"><span>Production 2024</span><span>${d.prod} Mt</span></div>
+    <div class="trow"><span>CO₂ intensity</span><span>${d.co2>0?d.co2+' t/t':'N/A'}</span></div>
+    <div class="trow"><span>BF-BOF / EAF</span><span>${d.bf}% / ${d.eaf}%</span></div>
+    ${tagH(d)}<div class="tnote">${d.info}</div>`;
+  tip.style.display='block';
+  if(!isMob()){
+    tip.style.position='absolute';
+    const wr=mw.getBoundingClientRect();
+    let lx=event.clientX-wr.left+14, ly=event.clientY-wr.top+14;
+    if(lx+265>wr.width) lx=event.clientX-wr.left-275;
+    if(ly+230>wr.height+60) ly=event.clientY-wr.top-240;
+    tip.style.left=lx+'px'; tip.style.top=ly+'px';
+  } else {
+    tip.style.position='fixed'; tip.style.left=''; tip.style.top='';
+  }
+}
 
-function drawBubbles() {
+function drawBubbles(){
   bubbleG.selectAll('*').remove();
   pinG.selectAll('*').remove();
 
-  // Draw bubbles for each country — ABOVE the map layer
-  COUNTRIES.forEach(d => {
-    const coords = proj([d.lon, d.lat]);
-    if (!coords) return;
-    const [cx, cy] = coords;
-    // clip to SVG area
-    if (cx < 0 || cx > W || cy < 0 || cy > H) return;
+  DATA.forEach(d=>{
+    const coords=proj([d.lon,d.lat]);
+    if(!coords||coords[0]<0||coords[0]>W||coords[1]<0||coords[1]>H) return;
+    const [cx,cy]=coords;
+    const r=Math.max(5,Math.min(58,Math.sqrt(d.prod)*2.1));
+    const col=gc(d);
 
-    const r = Math.max(5, Math.min(58, Math.sqrt(d.prod) * 2.2));
-    const col = getCol(d);
+    bubbleG.append('circle').attr('cx',cx).attr('cy',cy).attr('r',r+5)
+      .attr('fill',col).attr('opacity',.18).attr('pointer-events','none');
 
-    // outer glow ring
-    bubbleG.append('circle')
-      .attr('cx', cx).attr('cy', cy).attr('r', r + 4)
-      .attr('fill', col).attr('opacity', 0.2)
-      .attr('pointer-events', 'none');
+    const circ=bubbleG.append('circle').attr('cx',cx).attr('cy',cy).attr('r',r)
+      .attr('fill',col).attr('fill-opacity',.9)
+      .attr('stroke','#fff').attr('stroke-width',2).attr('cursor','pointer');
 
-    // main bubble
-    const circ = bubbleG.append('circle')
-      .attr('cx', cx).attr('cy', cy).attr('r', r)
-      .attr('fill', col)
-      .attr('fill-opacity', 0.85)
-      .attr('stroke', '#ffffff')
-      .attr('stroke-width', 1.8)
-      .attr('cursor', 'pointer');
-
-    // label (only if big enough)
-    if (r > 14) {
-      bubbleG.append('text')
-        .attr('x', cx).attr('y', cy + (r > 22 ? 4 : 3))
-        .attr('text-anchor', 'middle')
-        .attr('font-size', r > 30 ? 10 : r > 20 ? 8 : 7)
-        .attr('font-family', 'Segoe UI,Arial,sans-serif')
-        .attr('font-weight', '700')
-        .attr('fill', '#fff')
-        .attr('pointer-events', 'none')
-        .text(d.name);
+    if(r>13){
+      bubbleG.append('text').attr('x',cx).attr('y',cy+(r>25?4:3))
+        .attr('text-anchor','middle')
+        .attr('font-size',r>35?11:r>22?9:7)
+        .attr('font-family','Segoe UI,Arial,sans-serif')
+        .attr('font-weight',700).attr('fill','#fff')
+        .attr('pointer-events','none').text(d.n);
     }
 
-    // hover events
-    circ
-      .on('mouseenter', (e) => showTip(e, d))
-      .on('mousemove',  (e) => moveTip(e))
-      .on('mouseleave', () => { tip.style.display = 'none'; });
+    circ.on('click',event=>{event.stopPropagation();showTip(event,d);})
+       .on('mouseenter',event=>{if(!isMob())showTip(event,d);})
+       .on('mousemove',event=>{if(!isMob())showTip(event,d);})
+       .on('mouseleave',()=>{if(!isMob())closeTip();});
   });
 
-  // H2 project stars — ABOVE bubbles
-  H2SITES.forEach(p => {
-    const coords = proj([p.lon, p.lat]);
-    if (!coords) return;
-    const [px, py] = coords;
-    if (px < 0 || px > W || py < 0 || py > H) return;
-
-    const s = 8;
-    pinG.append('polygon')
-      .attr('points', starPts(px, py, s, s * 0.42, 5))
-      .attr('fill', '#2b6cb0')
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 1)
-      .attr('opacity', 1);
-
-    if (p.name.length < 12) {
-      pinG.append('text')
-        .attr('x', px + s + 3).attr('y', py + 4)
-        .attr('font-size', 7)
-        .attr('font-family', 'Segoe UI,Arial,sans-serif')
-        .attr('fill', '#1a3a5c')
-        .attr('font-weight', '700')
-        .text(p.name);
-    }
+  // H2 project stars
+  PINS.forEach(p=>{
+    const coords=proj([p.lon,p.lat]);
+    if(!coords) return;
+    const [px,py]=coords;
+    const s=7,pts=[];
+    for(let i=0;i<10;i++){const r=i%2===0?s:s*.42;const a=i*Math.PI/5-Math.PI/2;pts.push(`${(px+r*Math.cos(a)).toFixed(1)},${(py+r*Math.sin(a)).toFixed(1)}`);}
+    pinG.append('polygon').attr('points',pts.join(' '))
+      .attr('fill','#2b6cb0').attr('stroke','#fff').attr('stroke-width',1.2);
+    pinG.append('text').attr('x',px+s+3).attr('y',py+4)
+      .attr('font-size',6.5).attr('fill','#1a3a5c')
+      .attr('font-family','Segoe UI,Arial,sans-serif').attr('font-weight',700)
+      .attr('pointer-events','none').text(p.n);
   });
 }
 
-function starPts(cx, cy, outerR, innerR, n) {
-  let pts = ''; const step = Math.PI / n;
-  for (let i = 0; i < 2 * n; i++) {
-    const r = i % 2 === 0 ? outerR : innerR;
-    const a = i * step - Math.PI / 2;
-    pts += (i ? ',' : '') + (cx + r * Math.cos(a)) + ' ' + (cy + r * Math.sin(a));
-  }
-  return pts;
-}
+// Click outside to close
+svg.on('click',()=>closeTip());
+document.addEventListener('click',e=>{if(!tip.contains(e.target))closeTip();});
 
-function getTag(d) {
-  if (colourMode === 'co2') {
-    if (d.co2 < 1.0) return '<span class="tag lo">Low CO₂ (&lt;1.0 t)</span>';
-    if (d.co2 < 2.0) return '<span class="tag mid">Medium CO₂</span>';
-    return '<span class="tag hi">High CO₂ (&gt;2.0 t)</span>';
-  }
-  if (colourMode === 'eaf') {
-    if (d.eaf >= 60) return '<span class="tag lo">EAF-dominant ✓</span>';
-    if (d.eaf >= 30) return '<span class="tag mid">Mixed routes</span>';
-    return '<span class="tag hi">BF-BOF dominant</span>';
-  }
-  return '';
-}
+// Load world map from CDN
+fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+  .then(r=>r.json())
+  .then(world=>{
+    landG.selectAll('path')
+      .data(topojson.feature(world,world.objects.countries).features)
+      .join('path').attr('class','country-path').attr('d',path);
 
-function showTip(e, d) {
-  tip.innerHTML = `
-    <strong>${d.name}</strong>
-    <div class="tt-row"><span>Production 2024</span><span>${d.prod} Mt</span></div>
-    <div class="tt-row"><span>CO₂ intensity</span><span>${d.co2 > 0 ? d.co2 + ' t/t steel' : 'N/A'}</span></div>
-    <div class="tt-row"><span>BF-BOF / EAF</span><span>${d.bf}% / ${d.eaf}%</span></div>
-    ${getTag(d)}
-    <div class="tip-note">${d.h2}</div>`;
-  tip.style.display = 'block';
-  moveTip(e);
-}
-function moveTip(e) {
-  const r = wrap.getBoundingClientRect();
-  let lx = e.clientX - r.left + 14;
-  let ly = e.clientY - r.top + 14;
-  if (lx + 260 > r.width)  lx = e.clientX - r.left - 270;
-  if (ly + 220 > r.height) ly = e.clientY - r.top - 230;
-  tip.style.left = lx + 'px';
-  tip.style.top  = ly + 'px';
-}
+    // borders
+    landG.append('path')
+      .datum(topojson.mesh(world,world.objects.countries,(a,b)=>a!==b))
+      .attr('fill','none').attr('stroke','#deeaf5').attr('stroke-width',.5)
+      .attr('d',path);
+  })
+  .catch(()=>{
+    // fallback: plain ocean with no land (still shows bubbles)
+    console.warn('World map CDN not available — showing bubbles only');
+  });
 
-function setMode(m, btn) {
-  colourMode = m;
-  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  const leg = document.getElementById('legend');
-  if (m === 'co2') leg.innerHTML = `
-    <div class="legend-item"><div class="swatch" style="background:#276749"></div>&lt;1.0 t CO₂/t (very low)</div>
-    <div class="legend-item"><div class="swatch" style="background:#38a169"></div>1.0–1.5 t CO₂/t</div>
-    <div class="legend-item"><div class="swatch" style="background:#d69e2e"></div>1.5–2.0 t CO₂/t</div>
-    <div class="legend-item"><div class="swatch" style="background:#c53030"></div>&gt;2.0 t CO₂/t (high)</div>
-    <div class="legend-item"><div class="swatch" style="background:#2b6cb0;border-radius:3px"></div>H₂-DRI Project ★</div>`;
-  else if (m === 'eaf') leg.innerHTML = `
-    <div class="legend-item"><div class="swatch" style="background:#276749"></div>≥60% EAF (clean)</div>
-    <div class="legend-item"><div class="swatch" style="background:#38a169"></div>40–60% EAF</div>
-    <div class="legend-item"><div class="swatch" style="background:#d69e2e"></div>20–40% EAF</div>
-    <div class="legend-item"><div class="swatch" style="background:#c53030"></div>&lt;20% EAF (BF-dominant)</div>
-    <div class="legend-item"><div class="swatch" style="background:#2b6cb0;border-radius:3px"></div>H₂-DRI Project ★</div>`;
-  else leg.innerHTML = `
-    <div class="legend-item"><div class="swatch" style="background:#c53030"></div>&gt;500 Mt/yr</div>
-    <div class="legend-item"><div class="swatch" style="background:#dd6b20"></div>100–500 Mt/yr</div>
-    <div class="legend-item"><div class="swatch" style="background:#d69e2e"></div>30–100 Mt/yr</div>
-    <div class="legend-item"><div class="swatch" style="background:#276749"></div>&lt;30 Mt/yr</div>
-    <div class="legend-item"><div class="swatch" style="background:#2b6cb0;border-radius:3px"></div>H₂-DRI Project ★</div>`;
+drawBubbles();
+
+function setMode(m,btn){
+  mode=m;
+  document.querySelectorAll('.mbtn').forEach(b=>{b.style.background='#fff';b.style.color='#4a5568';b.style.borderColor='#cbd5e0';});
+  btn.style.background='#1a3a5c';btn.style.color='#fff';btn.style.borderColor='#1a3a5c';
+  const leg=document.getElementById('legend');
+  if(m==='co2')leg.innerHTML=`<div class="li"><div class="sw" style="background:#276749"></div>&lt;1.0 t CO₂/t</div><div class="li"><div class="sw" style="background:#38a169"></div>1.0–1.5 t</div><div class="li"><div class="sw" style="background:#d69e2e"></div>1.5–2.0 t</div><div class="li"><div class="sw" style="background:#c53030"></div>&gt;2.0 t CO₂/t</div><div class="li"><div class="sw" style="background:#2b6cb0;border-radius:3px"></div>H₂-DRI ★</div>`;
+  else if(m==='eaf')leg.innerHTML=`<div class="li"><div class="sw" style="background:#276749"></div>≥60% EAF</div><div class="li"><div class="sw" style="background:#38a169"></div>40–60%</div><div class="li"><div class="sw" style="background:#d69e2e"></div>20–40%</div><div class="li"><div class="sw" style="background:#c53030"></div>&lt;20% EAF</div><div class="li"><div class="sw" style="background:#2b6cb0;border-radius:3px"></div>H₂-DRI ★</div>`;
+  else leg.innerHTML=`<div class="li"><div class="sw" style="background:#c53030"></div>&gt;500 Mt/yr</div><div class="li"><div class="sw" style="background:#dd6b20"></div>100–500 Mt</div><div class="li"><div class="sw" style="background:#d69e2e"></div>30–100 Mt</div><div class="li"><div class="sw" style="background:#276749"></div>&lt;30 Mt</div><div class="li"><div class="sw" style="background:#2b6cb0;border-radius:3px"></div>H₂-DRI ★</div>`;
   drawBubbles();
 }
 
-function switchTab(id, el) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+function switchTab(id,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   el.classList.add('active');
-  document.getElementById('panel-' + id).classList.add('active');
+  document.getElementById('panel-'+id).classList.add('active');
+  closeTip();
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 </script>
 </body>
